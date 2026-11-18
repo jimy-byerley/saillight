@@ -9,6 +9,12 @@ description = "Storage size visualizer for Sailfish OS"
 qmetaobject = "0.2"
 qttypes = "0.2"
 cpp = "0.5"
+libc = "0.2"
+flate2 = "1"
+crc32fast = "1"
+tar = { version = "0.4", default-features = false }
+zip = { version = "0.6", default-features = false, features = ["deflate"] }
+sevenz-rust = { version = "0.6", default-features = false, features = ["compress"] }
 
 [build-dependencies]
 cpp_build = "0.5"

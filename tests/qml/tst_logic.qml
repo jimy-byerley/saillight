@@ -50,4 +50,51 @@ TestCase {
         compare(crumbs.length, 3)
         compare(crumbs[2].path, "/srv/files")
     }
+
+    function test_sectorHsl() {
+        var folder = Logic.sectorHsl(0, 1, true)
+        var file = Logic.sectorHsl(0, 1, false)
+        compare(folder[0], file[0])
+        verify(folder[1] > file[1])
+        // rings get darker, never black
+        verify(Logic.sectorHsl(0, 2, true)[2] < folder[2])
+        verify(Logic.sectorHsl(0, 30, true)[2] >= 0.2)
+        // all values are valid, and neighbours have different hues
+        for (var group = 0; group < 100; group++) {
+            var color = Logic.sectorHsl(group, 1, true)
+            verify(color[0] >= 0 && color[0] < 1)
+            var next = Logic.sectorHsl(group + 1, 1, true)
+            var distance = Math.abs(color[0] - next[0])
+            verify(Math.min(distance, 1 - distance) > 0.2)
+        }
+    }
+
+    function test_canvasAngle() {
+        fuzzyCompare(Logic.canvasAngle(0), -Math.PI / 2, 1e-9)
+        fuzzyCompare(Logic.canvasAngle(0.25), 0, 1e-9)
+        fuzzyCompare(Logic.canvasAngle(0.5), Math.PI / 2, 1e-9)
+        fuzzyCompare(Logic.canvasAngle(1), 3 * Math.PI / 2, 1e-9)
+    }
+
+    function test_archiveExtension() {
+        compare(Logic.archiveExtension("zip", true), "zip")
+        compare(Logic.archiveExtension("zip", false), "zip")
+        compare(Logic.archiveExtension("gz", true), "tar.gz")
+        compare(Logic.archiveExtension("gz", false), "gz")
+        compare(Logic.archiveExtension("7z", true), "tar.7z")
+        compare(Logic.archiveExtension("7z", false), "7z")
+    }
+
+    function test_counts() {
+        compare(Logic.itemCount(0), "0 items")
+        compare(Logic.itemCount(1), "1 item")
+        compare(Logic.itemCount(12), "12 items")
+        compare(Logic.scanLabel(1500, 3200000000), "1500 items, 3.2 GB")
+    }
+
+    function test_cssColor() {
+        compare(Logic.cssColor(Qt.rgba(1, 0, 0, 1)), "rgba(255, 0, 0, 1)")
+        compare(Logic.cssColor(Qt.rgba(0, 0.5, 1, 1), 0.35), "rgba(0, 128, 255, 0.35)")
+        compare(Logic.cssColor(Qt.rgba(0, 0, 0, 0.5)), "rgba(0, 0, 0, 0.5)")
+    }
 }
