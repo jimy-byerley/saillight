@@ -1,0 +1,18 @@
+[package]
+name = "saillight"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+description = "Storage size visualizer for Sailfish OS"
+
+[dependencies]
+qmetaobject = "0.2"
+qttypes = "0.2"
+cpp = "0.5"
+
+[build-dependencies]
+cpp_build = "0.5"
+
+[profile.release]
+lto = "thin"
+panic = "unwind"

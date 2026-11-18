@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Saillight
+Icon=saillight
+Exec=saillight
+X-Nemo-Application-Type=no-invoker
+
+[X-Sailjail]
+Sandboxing=Disabled
