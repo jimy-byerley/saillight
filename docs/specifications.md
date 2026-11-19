@@ -32,7 +32,7 @@ in the center is a recursive and interactive pie chart
 - clicking a sector selects it and show details on it below
 - clicking the center moves to parent folder
 
-around chart (above and below in portrait and left and right in lanscape) are names of items in current folder with arrows pointing to them in the chart. names placement derived from the chart
+around chart (above and below in portrait and left and right in lanscape) are names of items in current selection (otherwise current folder) with arrows pointing to them in the chart. names placement derived from the chart
 
 below chart (or right in landscape mode) are the details of the selected sector:
 - path
@@ -41,6 +41,8 @@ below chart (or right in landscape mode) are the details of the selected sector:
 - option to delete (with standard sailfish confirmation)
 - option to compress as zip, gz, 7z (tar first for folders if not zip)
   original is deleted on success
+
+when no selection, details are replaced by a list of usage gauges of each mount point
 
 draging the screen down shows option to refresh and depth setting
 

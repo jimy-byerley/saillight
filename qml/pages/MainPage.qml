@@ -46,6 +46,15 @@ Page {
         chartModel.start()
     }
 
+    // the sizes shown are being computed again
+    readonly property bool rescanning: chartModel.known && (chartModel.scanning || rescanShown.running)
+    Timer {
+        id: rescanShown
+        interval: 800
+    }
+    readonly property bool scanning: chartModel.scanning
+    onScanningChanged: if (scanning && chartModel.known) rescanShown.restart()
+
     ChartModel {
         id: chartModel
         onFailed: Notices.show(message, Notice.Long, Notice.Bottom)
@@ -67,7 +76,8 @@ Page {
     SilicaFlickable {
         id: flickable
         anchors.fill: parent
-        contentHeight: Math.max(block.y + block.height, details.y + details.height)
+        contentHeight: Math.max(block.y + block.height,
+                                details.y + (details.visible ? details.height : mounts.height))
 
         PullDownMenu {
             MenuItem {
@@ -116,6 +126,12 @@ Page {
                 ? height / 2
                 : Theme.paddingMedium + chartModel.labelsAbove + page.chartRadius
 
+            // a tap around the chart clears the selection
+            MouseArea {
+                anchors.fill: parent
+                onClicked: chartModel.select(-1)
+            }
+
             Chart {
                 id: chart
                 model: chartModel
@@ -154,10 +170,18 @@ Page {
                     font.pixelSize: Theme.fontSizeExtraSmall
                     truncationMode: TruncationMode.Fade
                 }
+                // sizes being computed again: shown long enough to be seen, as a scan can
+                // take less than a blink
+                BusyIndicator {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    size: BusyIndicatorSize.Small
+                    visible: page.rescanning
+                    running: visible
+                }
                 Label {
                     width: parent.width
                     horizontalAlignment: Text.AlignHCenter
-                    visible: chartModel.known
+                    visible: chartModel.known && !page.rescanning
                     text: Logic.formatSize(chartModel.totalSize)
                     color: Theme.highlightColor
                     font.pixelSize: Theme.fontSizeSmall
@@ -181,6 +205,15 @@ Page {
             onDeleteRequested: remorse.execute("Deleting " + name, function() {
                 chartModel.deleteItem(path)
             })
+        }
+
+        // without a selection, the storages take the place of the details
+        Mounts {
+            id: mounts
+            model: chartModel
+            x: details.x
+            y: details.y
+            width: details.width
         }
 
         VerticalScrollDecorator { }

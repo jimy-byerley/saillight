@@ -128,45 +128,37 @@ Column {
 
     Item { width: 1; height: Theme.paddingSmall }
 
+    // the actions on the item, all on one line
     Row {
         visible: root.shown && !root.marker
-        spacing: Theme.paddingMedium
 
-        Button {
+        ActionIcon {
+            action: "open"
+            icon: "enter"
             visible: root.details.enterable === true
-            width: (root.innerWidth - Theme.paddingMedium) / 2
-            text: "Open"
+            width: root.innerWidth / 5
             enabled: root.model ? !root.model.busy : false
             onClicked: root.model.enterSelected()
         }
-        Button {
-            width: (root.innerWidth - Theme.paddingMedium) / 2
-            text: "Delete"
+        ActionIcon {
+            action: "delete"
+            icon: "icon-m-delete"
+            width: root.innerWidth / 5
             enabled: root.allowed
             onClicked: root.deleteRequested(root.details.path, root.details.name)
         }
-    }
-
-    Label {
-        visible: compressRow.visible
-        width: root.innerWidth
-        text: "Compress as"
-        color: Theme.secondaryColor
-        font.pixelSize: Theme.fontSizeExtraSmall
-    }
-
-    Row {
-        id: compressRow
-        // only files and folders can be compressed
-        visible: root.shown && (root.details.kind === "file" || root.details.kind === "folder")
-        spacing: Theme.paddingMedium
 
         Repeater {
-            model: ["zip", "gz", "7z"]
+            // only files and folders can be compressed
+            model: root.shown && (root.details.kind === "file" || root.details.kind === "folder")
+                   ? ["zip", "gz", "7z"] : []
 
-            Button {
-                width: (root.innerWidth - 2 * Theme.paddingMedium) / 3
-                text: Logic.archiveExtension(modelData, root.details.kind === "folder")
+            ActionIcon {
+                action: modelData
+                icon: "icon-m-file-archive-folder"
+                // the icon is the same for all: the kind of archive is written
+                caption: Logic.archiveExtension(modelData, root.details.kind === "folder")
+                width: root.innerWidth / 5
                 enabled: root.allowed
                 onClicked: root.model.compressItem(root.details.path, modelData)
             }

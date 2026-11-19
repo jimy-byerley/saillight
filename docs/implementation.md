@@ -13,7 +13,7 @@ choices marked *(to confirm)* were made during the unattended implementation and
 
 - `src/scan/` knows nothing about the chart, `src/chart/` nothing about the filesystem. the size tree (`scan/tree.rs`) is what goes from one to the other, and what the cache stores
 - the tree keeps every item, however small
-- the scan reports the number of items and bytes counted so far, at most every 100 ms. it cannot tell how far it is, so its progress bar has no end
+- the scan reports the number of items and bytes counted so far, at most every 100 ms. it cannot tell how far it is, so its progress bar has no end. the bar only shows for a scan lasting more than 0.4 s, a shorter one would just push the chart down and back
 - entering a folder of the chart reuses what is known of it, without a scan. going to a parent folder scans it *(to confirm)*
 
 ## cache
@@ -29,15 +29,18 @@ choices marked *(to confirm)* were made during the unattended implementation and
 - the app's own files (`~/.cache/saillight`, `~/.config/saillight`) are not looked at
 - after a deletion or compression made by the app, the tree takes the new date of the folder it happened in, so the app's own actions do not light the warning
 - a tap on the warning refreshes *(to confirm)*
+- during a refresh the chart stays as it was until the new sizes are there; the cache file is dropped at once. meanwhile a small busy indicator takes the place of the size in the centre of the chart, for 0.8 s at least so that a quick scan is still seen. what was selected stays selected if it is still there
 
 ## chart
 
 - geometry is computed in rust, without Qt (`src/chart/`): sectors, the sector under a touch point, positions of the names
 - QML only draws: `Chart.qml` paints the sectors on a `Canvas` with its native arcs. the hovered and selected sectors are painted on a second canvas above, so sliding does not repaint all the sectors
-- the full chart is repainted only when its data changes
+- the full chart is repainted only when its data changes, and when the app comes back in front: canvases lose their drawing in the background
 - canvases are only given colors as text (`Logic.cssColor`), and their state is reset at each painting, see the journal
 - items are placed biggest first, clockwise from the top. what is under 1% of the full circle is not drawn; the gap is at the end of its folder's sector
-- colors: one hue per item of the current folder, shared by what is inside it; rings get darker outward; files are less saturated than folders *(to confirm)*
+- thin light lines between the sectors
+- colors follow the ambience *(a try, to confirm)*: tints of the highlight color of the theme. an item of the current folder and what is inside it share a tint; neighbours differ by a small hue shift and by lightness; rings let more of the background through outward; files are less saturated than folders
+- as the sectors have the highlight color, the selected sector is outlined and lightened with the primary color of the theme, the hovered one the same but fainter
 - the centre shows the current folder and its size
 - fallback if the canvas is too slow on a phone: a painted item written in the C++ embedded with `cpp!`, drawing the same sectors. only `Chart.qml` would change
 
@@ -49,17 +52,33 @@ choices marked *(to confirm)* were made during the unattended implementation and
 
 ## interaction
 
-- a press on the chart highlights the sector under the finger, sliding moves the highlight, releasing selects. releasing out of the chart changes nothing, releasing on a gap clears the selection
+- a press on the chart highlights the sector under the finger, sliding moves the highlight, releasing selects. releasing out of the chart changes nothing, releasing on a gap clears the selection, and so does a tap around the chart
 - the chart keeps the touches that start on its disc, so the page cannot be scrolled or its menu pulled from there; the corners around the disc, the names, the path and the details can *(to confirm)*
 - pull-down menu: refresh, more levels, fewer levels (1 to 6)
 - a tap on a name selects its sector
 
 ## names around the chart
 
-- only the items of the current folder are named
-- portrait: one name per line above and below the chart, at most 5 lines each, the biggest items first. names of the sectors closest to the sides are the furthest from the chart, so their arrows go around the others. a name on the left half starts at its arrow, a name on the right half ends at it, and stops before the arrows crossing its line
+- a selected folder whose content is drawn has its items named; anything else selected (a file, a marker, a folder of the last ring) leaves the names of the current folder *(to confirm)*
+- portrait: one name per line above and below the chart, at most 5 lines each, the biggest items first. the room for the 5 lines is always kept, so the chart does not move under the finger when the selection changes the names *(to confirm)*. names of the sectors closest to the sides are the furthest from the chart, so their arrows go around the others. a name on the left half starts at its arrow, a name on the right half ends at it, and stops before the arrows crossing its line
 - landscape: a column of names on each side, at the height of their sector when there is room. the chart and its names take 2/3 of the width, the details the rest
-- an arrow goes from the name to the rim of the chart, then straight into the sector of the first ring, ending with a dot
+- an arrow goes from the name to the rim of the chart, then straight into its sector, across the outer rings if needed, ending with a dot
+
+## storages
+
+- listed from `/proc/self/mounts`: only writable filesystems on a real device (`/dev/...`), each device once, at its shortest mount path. this leaves out the system's virtual filesystems and the read-only firmware partitions *(to confirm)*
+- each shows its path, used and total bytes and a gauge. a tap makes it the current folder *(to confirm)*
+- read again each time the chart changes and when the app comes back in front
+
+## cover
+
+- full path of the current folder, its last level in the highlight color, on three lines at most (first levels are left out until it fits), as on the cover of sailtree; then a ring for the storage it is in: the folder in the highlight color, the rest of what is used, what is free. the size of the folder and of the storage are written in the ring (`UsageRing.qml`)
+- a folder too small to show in the ring still gets a thin mark
+- one cover action: refresh. while a scan, deletion or compression runs, it is named in the ring
+
+## actions on the selection
+
+- one line of theme icons under the details (`ActionIcon.qml`): open (folders, the `enter` icon of sailtree, copied in `qml/icons`), delete, and one archive icon per format with the extension it gives written below, as the icon is the same for the three
 
 ## deletion
 
@@ -117,6 +136,7 @@ saillight/
 │   │   ├── walk.rs           recursive walk filling it
 │   │   ├── cache.rs          the tree saved in the app storage
 │   │   ├── stale.rs          modification dates against the cache
+│   │   ├── mounts.rs         storages of the device and their usage
 │   │   └── owner.rs          user and group names, permissions as text
 │   ├── chart/                Qt-free
 │   │   ├── layout.rs         tree to sectors
@@ -131,7 +151,7 @@ saillight/
 ├── qml/                      installed to /usr/share/saillight/qml, not embedded
 │   ├── saillight.qml         ApplicationWindow
 │   ├── pages/MainPage.qml    the only page, pull-down menu
-│   ├── components/           PathBar, Chart, ChartLabels, Details, ProgressRow
+│   ├── components/           PathBar, Chart, ChartLabels, Details, ActionIcon, Mounts, UsageRing, ProgressRow
 │   ├── js/logic.js           interface logic without visual items (formatting, path levels, colors)
 │   ├── icons/                action icons missing from the theme, svg (created with the first one)
 │   └── cover/                CoverPage

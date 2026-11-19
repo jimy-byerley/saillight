@@ -22,13 +22,22 @@ Item {
 
     readonly property color unreadableColor: "#ff5a4d"
     readonly property color mountColor: Theme.secondaryHighlightColor
-    // between the sectors, the color of what is behind the chart
-    readonly property color outlineColor: Theme.colorScheme === Theme.LightOnDark ? "#000000" : "#ffffff"
+    // light lines between the sectors
+    readonly property color outlineColor: Theme.rgba(Theme.lightPrimaryColor, 0.6)
 
     onSectorsChanged: { sectorCanvas.requestPaint(); overlay.requestPaint() }
     onHoveredChanged: overlay.requestPaint()
     onSelectedChanged: overlay.requestPaint()
     onRadiusChanged: { sectorCanvas.requestPaint(); overlay.requestPaint() }
+    // another ambience
+    readonly property color tint: Theme.highlightColor
+    onTintChanged: { sectorCanvas.requestPaint(); overlay.requestPaint() }
+
+    // a canvas loses what it drew while the app is in the background
+    Connections {
+        target: Qt.application
+        onActiveChanged: if (Qt.application.active) { sectorCanvas.requestPaint(); overlay.requestPaint() }
+    }
 
     // outline of a sector as the current path of a canvas context
     function trace(context, sector) {
@@ -55,22 +64,25 @@ Item {
     Canvas {
         id: sectorCanvas
         anchors.fill: parent
+        onAvailableChanged: if (available) requestPaint()
 
         onPaint: {
             var started = Date.now()
             var context = getContext("2d")
             context.reset()
             var sectors = chart.sectors
-            // thin lines of the background between the sectors
+            // thin light lines between the sectors
             context.lineWidth = Math.max(1, Math.round(Theme.pixelRatio * 1.5))
             context.strokeStyle = Logic.cssColor(chart.outlineColor)
+            // tints of the highlight color of the theme
+            var base = Logic.hsl(Theme.highlightColor)
             var index, sector
             for (index = 0; index < sectors.length; index++) {
                 sector = sectors[index]
                 if (sector.kind !== 0)
                     continue
-                var color = Logic.sectorHsl(sector.group, sector.ring, sector.folder)
-                context.fillStyle = Logic.cssColor(Qt.hsla(color[0], color[1], color[2], 1))
+                var color = Logic.sectorHsla(base, sector.group, sector.ring, sector.folder)
+                context.fillStyle = Logic.cssColor(Qt.hsla(color[0], color[1], color[2], 1), color[3])
                 chart.trace(context, sector)
                 context.fill()
                 context.stroke()
@@ -94,6 +106,7 @@ Item {
     Canvas {
         id: overlay
         anchors.fill: parent
+        onAvailableChanged: if (available) requestPaint()
 
         function highlight(context, sector, fill, line) {
             chart.trace(context, sector)
@@ -115,12 +128,14 @@ Item {
             var context = getContext("2d")
             context.reset()
             var sectors = chart.sectors
+            // the sectors have the highlight color of the theme: what is selected stands out
+            // in its primary color
             if (chart.selected >= 0 && chart.selected < sectors.length)
                 highlight(context, sectors[chart.selected],
-                          Logic.cssColor(Theme.highlightColor, 0.35), Logic.cssColor(Theme.highlightColor))
+                          Logic.cssColor(Theme.primaryColor, 0.45), Logic.cssColor(Theme.primaryColor))
             if (chart.hovered >= 0 && chart.hovered < sectors.length && chart.hovered !== chart.selected)
                 highlight(context, sectors[chart.hovered],
-                          Logic.cssColor(Theme.primaryColor, 0.35), Logic.cssColor(Theme.primaryColor))
+                          Logic.cssColor(Theme.primaryColor, 0.2), Logic.cssColor(Theme.primaryColor, 0.7))
         }
     }
 

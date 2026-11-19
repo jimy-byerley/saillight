@@ -1,7 +1,11 @@
 //! placement of the names around the chart and of the arrows pointing to their sectors
 //!
-//! only the first ring is named: the items of the current folder. coordinates are in pixels,
-//! relative to the centre of the chart, y growing downward.
+//! the caller tells which sectors are named: the items of the selected folder, or of the
+//! current one. coordinates are in pixels, relative to the centre of the chart, y growing
+//! downward.
+//!
+//! in portrait the room taken above and below does not depend on the number of names, so the
+//! chart does not move when the selection changes them.
 //!
 //! in portrait, names are above and below the chart, one per line. the names of the sectors
 //! closest to the sides are the furthest from the chart, so that their arrows go around the
@@ -71,25 +75,37 @@ fn point(turn: f64, radius: f64) -> (f64, f64) {
     (radius * angle.sin(), -radius * angle.cos())
 }
 
-/// names and arrows for the first ring of `sectors`
-pub fn place(sectors: &[Sector], depth: u32, area: &Area) -> Placement {
-    let (inner, outer) = ring_radii(1, depth);
-    let candidates: Vec<Candidate> = sectors
+/// names and arrows for the sectors of `sectors` at the indices `named`
+pub fn place(sectors: &[Sector], named: &[usize], depth: u32, area: &Area) -> Placement {
+    let candidates: Vec<Candidate> = named
         .iter()
-        .enumerate()
-        .filter(|(_, sector)| sector.ring == 1 && !sector.is_marker())
-        .map(|(index, sector)| Candidate {
-            sector: index,
-            span: sector.end - sector.start,
-            elbow: point(sector.middle(), area.radius),
-            tip: point(sector.middle(), area.radius * (inner + outer) / 2.0),
+        .filter_map(|&index| Some((index, sectors.get(index)?)))
+        .filter(|(_, sector)| !sector.is_marker())
+        .map(|(index, sector)| {
+            let (inner, outer) = ring_radii(sector.ring, depth);
+            Candidate {
+                sector: index,
+                span: sector.end - sector.start,
+                elbow: point(sector.middle(), area.radius),
+                tip: point(sector.middle(), area.radius * (inner + outer) / 2.0),
+            }
         })
         .collect();
     if area.landscape {
         landscape(candidates, area)
     } else {
-        portrait(candidates, area)
+        let mut placement = portrait(candidates, area);
+        // the same room whatever is named, as long as there is a chart
+        let room = if sectors.is_empty() { 0.0 } else { area.line * (area.rows as f64 + 1.0) };
+        placement.above = room;
+        placement.below = room;
+        placement
     }
+}
+
+/// the sectors of the first ring: the items of the current folder
+pub fn first_ring(sectors: &[Sector]) -> Vec<usize> {
+    (0..sectors.len()).filter(|&index| sectors[index].ring == 1 && !sectors[index].is_marker()).collect()
 }
 
 /// keep the `most` biggest
@@ -160,12 +176,6 @@ fn portrait(candidates: Vec<Candidate>, area: &Area) -> Placement {
                 left.push(x);
             }
             placement.labels.push(label);
-        }
-        let height = if count == 0 { 0.0 } else { area.line * (count as f64 + 1.0) };
-        if direction < 0.0 {
-            placement.above = height;
-        } else {
-            placement.below = height;
         }
     }
     placement
@@ -253,7 +263,7 @@ mod tests {
     #[test]
     fn only_the_first_ring_is_named() {
         let sectors = sectors_of(&[500, 300, 200]);
-        let placement = place(&sectors, 3, &portrait_area(6));
+        let placement = place(&sectors, &first_ring(&sectors), 3, &portrait_area(6));
         // three files and the folder; not what is inside the folder, not the marker
         assert_eq!(placement.labels.len(), 4);
         for label in &placement.labels {
@@ -266,7 +276,7 @@ mod tests {
     fn portrait_names_are_above_and_below_on_their_own_lines() {
         let area = portrait_area(6);
         let sectors = sectors_of(&[300, 250, 200, 150, 100, 80, 60, 40]);
-        let placement = place(&sectors, 3, &area);
+        let placement = place(&sectors, &first_ring(&sectors), 3, &area);
         assert_eq!(placement.labels.len(), 9);
         let mut lines: Vec<i64> = Vec::new();
         for label in &placement.labels {
@@ -280,10 +290,10 @@ mod tests {
             assert!(start >= -area.width && end <= area.width, "{start}..{end}");
             assert!(label.width > 0.0);
         }
-        let above = placement.labels.iter().filter(|label| label.y < 0.0).count() as f64;
-        let below = placement.labels.iter().filter(|label| label.y > 0.0).count() as f64;
-        assert_eq!(placement.above, area.line * (above + 1.0));
-        assert_eq!(placement.below, area.line * (below + 1.0));
+        // the room does not depend on the number of names
+        assert_eq!(placement.above, area.line * 7.0);
+        assert_eq!(placement.below, area.line * 7.0);
+        assert_eq!(place(&sectors, &[], 3, &area).above, area.line * 7.0);
         for label in &placement.labels {
             let limit = if label.y < 0.0 { placement.above } else { placement.below };
             assert!(label.y.abs() + area.line / 2.0 <= area.radius + limit);
@@ -294,7 +304,7 @@ mod tests {
     fn portrait_arrows_of_the_sides_go_around_the_others() {
         let area = portrait_area(8);
         let sectors = sectors_of(&[300, 250, 200, 150, 100, 80, 60, 40]);
-        let placement = place(&sectors, 3, &area);
+        let placement = place(&sectors, &first_ring(&sectors), 3, &area);
         for band in [-1.0, 1.0] {
             let labels: Vec<&Label> =
                 placement.labels.iter().filter(|label| label.y * band > 0.0).collect();
@@ -320,7 +330,7 @@ mod tests {
     fn portrait_text_goes_away_from_its_arrow_toward_the_middle() {
         let area = portrait_area(8);
         let sectors = sectors_of(&[300, 250, 200, 150]);
-        let placement = place(&sectors, 3, &area);
+        let placement = place(&sectors, &first_ring(&sectors), 3, &area);
         for label in &placement.labels {
             assert_eq!(label.right, label.attach.0 >= 0.0);
             if label.right {
@@ -336,7 +346,7 @@ mod tests {
     fn portrait_keeps_the_biggest_when_lines_are_missing() {
         let area = portrait_area(2);
         let sectors = sectors_of(&[100; 20]);
-        let placement = place(&sectors, 3, &area);
+        let placement = place(&sectors, &first_ring(&sectors), 3, &area);
         let above = placement.labels.iter().filter(|label| label.y < 0.0).count();
         let below = placement.labels.iter().filter(|label| label.y > 0.0).count();
         assert_eq!((above, below), (2, 2));
@@ -351,7 +361,7 @@ mod tests {
     fn arrows_point_inside_their_sector() {
         for area in [portrait_area(6), landscape_area()] {
             let sectors = sectors_of(&[300, 250, 200, 150]);
-            let placement = place(&sectors, 3, &area);
+            let placement = place(&sectors, &first_ring(&sectors), 3, &area);
             for label in &placement.labels {
                 let sector = &sectors[label.sector];
                 let radius = (label.elbow.0.powi(2) + label.elbow.1.powi(2)).sqrt();
@@ -373,7 +383,7 @@ mod tests {
     fn landscape_names_are_in_columns_without_overlap() {
         let area = landscape_area();
         let sectors = sectors_of(&[300, 250, 200, 150, 100, 80, 60, 40, 40, 40, 40]);
-        let placement = place(&sectors, 3, &area);
+        let placement = place(&sectors, &first_ring(&sectors), 3, &area);
         assert_eq!(placement.labels.len(), 12);
         assert_eq!((placement.above, placement.below), (0.0, 0.0));
         for side in [-1.0, 1.0] {
@@ -404,7 +414,7 @@ mod tests {
         let mut area = landscape_area();
         area.height = 60.0; // three lines
         let sectors = sectors_of(&[100; 30]);
-        let placement = place(&sectors, 3, &area);
+        let placement = place(&sectors, &first_ring(&sectors), 3, &area);
         for side in [-1.0, 1.0] {
             let column: Vec<&Label> =
                 placement.labels.iter().filter(|label| label.attach.0 * side > 0.0).collect();
@@ -413,10 +423,26 @@ mod tests {
     }
 
     #[test]
+    fn inner_sectors_are_named_in_their_ring() {
+        let sectors = sectors_of(&[500, 300, 200]);
+        let inside = sectors.iter().position(|sector| sector.ring == 2 && !sector.is_marker()).unwrap();
+        let marker = sectors.iter().position(|sector| sector.is_marker()).unwrap();
+        for area in [portrait_area(6), landscape_area()] {
+            // markers and unknown indices are not named
+            let placement = place(&sectors, &[inside, marker, 999], 3, &area);
+            assert_eq!(placement.labels.len(), 1);
+            let label = &placement.labels[0];
+            assert_eq!(label.sector, inside);
+            let found = crate::chart::hit::hit(&sectors, 3, label.tip.0 / area.radius, label.tip.1 / area.radius);
+            assert_eq!(found, crate::chart::hit::Hit::Sector(inside));
+        }
+    }
+
+    #[test]
     fn nothing_to_name() {
-        let placement = place(&[], 3, &portrait_area(6));
+        let placement = place(&[], &[], 3, &portrait_area(6));
         assert!(placement.labels.is_empty());
         assert_eq!((placement.above, placement.below), (0.0, 0.0));
-        assert!(place(&[], 3, &landscape_area()).labels.is_empty());
+        assert!(place(&[], &[], 3, &landscape_area()).labels.is_empty());
     }
 }

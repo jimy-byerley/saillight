@@ -25,6 +25,12 @@ Item {
     onSelectedChanged: arrows.requestPaint()
     onHoveredChanged: arrows.requestPaint()
 
+    // a canvas loses what it drew while the app is in the background
+    Connections {
+        target: Qt.application
+        onActiveChanged: if (Qt.application.active) arrows.requestPaint()
+    }
+
     function colorOf(sector) {
         if (sector === selected)
             return Theme.highlightColor
@@ -34,6 +40,7 @@ Item {
     Canvas {
         id: arrows
         anchors.fill: parent
+        onAvailableChanged: if (available) requestPaint()
 
         onPaint: {
             var context = getContext("2d")

@@ -19,7 +19,7 @@ use crate::chart::layout::{ring_radii, SectorKind};
 use crate::config::{self, Config};
 use crate::scan::tree::{Node, Tree};
 use crate::scan::walk::{node_of, walk, Progress};
-use crate::scan::{cache, stale};
+use crate::scan::{cache, mounts, stale};
 use crate::worker::{self, Cancel};
 
 #[allow(non_snake_case)]
@@ -53,6 +53,13 @@ pub struct ChartModel {
     labelsAbove: qt_property!(f64; NOTIFY labels_changed),
     labelsBelow: qt_property!(f64; NOTIFY labels_changed),
     labels_changed: qt_signal!(),
+
+    /// the storages of the device: `path`, `total`, `used`, `available` (bytes)
+    mounts: qt_property!(QVariantList; NOTIFY mounts_changed),
+    /// the storage the current folder is in: bytes it can hold and bytes taken, 0 when unknown
+    volumeTotal: qt_property!(f64; NOTIFY mounts_changed),
+    volumeUsed: qt_property!(f64; NOTIFY mounts_changed),
+    mounts_changed: qt_signal!(),
 
     /// index of the sector under the finger, -1 for none
     hovered: qt_property!(i32; NOTIFY hover_changed),
@@ -187,6 +194,10 @@ impl ChartModel {
             labelsAbove: 0.0,
             labelsBelow: 0.0,
             labels_changed: Default::default(),
+            mounts: Default::default(),
+            volumeTotal: 0.0,
+            volumeUsed: 0.0,
+            mounts_changed: Default::default(),
             hovered: -1,
             hover_changed: Default::default(),
             selected: -1,
@@ -276,9 +287,28 @@ impl ChartModel {
             })
             .collect();
         self.chart_changed();
-        self.publish_labels();
         self.publish_hover();
         self.publish_selection();
+        self.publish_mounts();
+    }
+
+    /// how full the storages are now
+    fn publish_mounts(&mut self) {
+        self.mounts = mounts::list()
+            .iter()
+            .map(|mount| {
+                let mut map = QVariantMap::default();
+                insert(&mut map, "path", text(&mount.path));
+                insert(&mut map, "total", mount.total as f64);
+                insert(&mut map, "used", mount.used as f64);
+                insert(&mut map, "available", mount.available as f64);
+                QVariant::from(map)
+            })
+            .collect();
+        let (total, free, _) = mounts::usage(&self.state.folder).unwrap_or((0, 0, 0));
+        self.volumeTotal = total as f64;
+        self.volumeUsed = total.saturating_sub(free) as f64;
+        self.mounts_changed();
     }
 
     fn publish_labels(&mut self) {
@@ -342,6 +372,8 @@ impl ChartModel {
         }
         self.details = map;
         self.selection_changed();
+        // the names are those of the selection
+        self.publish_labels();
     }
 
     fn set_stale(&mut self, stale: bool) {
@@ -561,8 +593,7 @@ impl ChartModel {
             return;
         }
         cache::clear(&self.cache_file);
-        self.state.clear_tree();
-        self.publish_chart();
+        // what is shown stays until the new sizes are there
         self.set_stale(false);
         self.load(false);
     }
@@ -737,6 +768,7 @@ impl ChartModel {
 
     #[allow(non_snake_case)]
     fn checkStale(&mut self) {
+        self.publish_mounts();
         self.check_stale();
     }
 }
@@ -1100,5 +1132,28 @@ mod tests {
         fixture.model.setLabelArea(true, 250.0, 40.0, 200.0, 300.0, 0);
         assert_eq!(fixture.model.labels.len(), 3);
         assert_eq!(fixture.model.labelsAbove, 0.0);
+    }
+
+    #[test]
+    fn names_follow_the_selection() {
+        let mut fixture = fixture();
+        fixture.model.setLabelArea(false, 300.0, 40.0, 340.0, 0.0, 5);
+        let above = fixture.model.labelsAbove;
+        fixture.tap_item("big");
+        assert_eq!(fixture.model.labels.len(), 2);
+        // the chart does not move
+        assert_eq!(fixture.model.labelsAbove, above);
+        fixture.model.select(-1);
+        assert_eq!(fixture.model.labels.len(), 3);
+    }
+
+    #[test]
+    fn storages_are_published() {
+        let mut fixture = fixture();
+        fixture.model.checkStale();
+        assert_eq!(fixture.model.mounts.len(), mounts::list().len());
+        // the storage of the current folder. not known for a temporary folder in the build
+        // target, where paths are remapped for some system calls only
+        assert!(fixture.model.volumeTotal >= fixture.model.volumeUsed);
     }
 }

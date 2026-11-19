@@ -51,22 +51,91 @@ TestCase {
         compare(crumbs[2].path, "/srv/files")
     }
 
-    function test_sectorHsl() {
-        var folder = Logic.sectorHsl(0, 1, true)
-        var file = Logic.sectorHsl(0, 1, false)
+    function test_hsl() {
+        var red = Logic.hsl(Qt.rgba(1, 0, 0, 1))
+        fuzzyCompare(red[0], 0, 1e-9)
+        fuzzyCompare(red[1], 1, 1e-9)
+        fuzzyCompare(red[2], 0.5, 1e-9)
+        fuzzyCompare(Logic.hsl(Qt.rgba(0, 1, 0, 1))[0], 1 / 3, 1e-9)
+        fuzzyCompare(Logic.hsl(Qt.rgba(0, 0, 1, 1))[0], 2 / 3, 1e-9)
+        // magenta side of red stays below a turn
+        var pink = Logic.hsl(Qt.rgba(1, 0, 0.5, 1))
+        verify(pink[0] > 0.9 && pink[0] < 1)
+        // greys have no saturation
+        compare(Logic.hsl(Qt.rgba(0.5, 0.5, 0.5, 1))[1], 0)
+        compare(Logic.hsl(Qt.rgba(1, 1, 1, 1))[1], 0)
+        compare(Logic.hsl(Qt.rgba(0, 0, 0, 1))[2], 0)
+        // back to the same color
+        var color = Qt.rgba(0.2, 0.6, 0.9, 1)
+        var parts = Logic.hsl(color)
+        var back = Qt.hsla(parts[0], parts[1], parts[2], 1)
+        fuzzyCompare(back.r, color.r, 0.01)
+        fuzzyCompare(back.g, color.g, 0.01)
+        fuzzyCompare(back.b, color.b, 0.01)
+    }
+
+    function test_sectorHsla() {
+        var base = [0.55, 0.8, 0.6]
+        var folder = Logic.sectorHsla(base, 0, 1, true)
+        var file = Logic.sectorHsla(base, 0, 1, false)
+        // the first item has the hue of the theme
+        compare(folder[0], base[0])
         compare(folder[0], file[0])
         verify(folder[1] > file[1])
-        // rings get darker, never black
-        verify(Logic.sectorHsl(0, 2, true)[2] < folder[2])
-        verify(Logic.sectorHsl(0, 30, true)[2] >= 0.2)
-        // all values are valid, and neighbours have different hues
-        for (var group = 0; group < 100; group++) {
-            var color = Logic.sectorHsl(group, 1, true)
-            verify(color[0] >= 0 && color[0] < 1)
-            var next = Logic.sectorHsl(group + 1, 1, true)
-            var distance = Math.abs(color[0] - next[0])
-            verify(Math.min(distance, 1 - distance) > 0.2)
+        // rings fade outward, never away
+        verify(Logic.sectorHsla(base, 0, 2, true)[3] < folder[3])
+        verify(Logic.sectorHsla(base, 0, 30, true)[3] >= 0.2)
+        // all values are valid whatever the theme, hues stay close to its own,
+        // and neighbours differ
+        var bases = [base, [0.02, 1, 0.9], [0.98, 0, 0.1]]
+        for (var index = 0; index < bases.length; index++) {
+            for (var group = 0; group < 100; group++) {
+                var color = Logic.sectorHsla(bases[index], group, 1 + group % 6, group % 2 === 0)
+                for (var part = 0; part < 4; part++)
+                    verify(color[part] >= 0 && color[part] <= 1)
+                verify(color[0] < 1)
+                var distance = Math.abs(color[0] - bases[index][0])
+                verify(Math.min(distance, 1 - distance) < 0.1)
+                var next = Logic.sectorHsla(bases[index], group + 1, 1, true)
+                var same = Logic.sectorHsla(bases[index], group, 1, true)
+                verify(next[0] !== same[0] || next[2] !== same[2])
+            }
         }
+    }
+
+    function test_fraction() {
+        compare(Logic.fraction(1, 4), 0.25)
+        compare(Logic.fraction(5, 4), 1)
+        compare(Logic.fraction(-1, 4), 0)
+        compare(Logic.fraction(1, 0), 0)
+        compare(Logic.usageLabel(1500, 20000000), "1.5 kB of 20 MB")
+    }
+
+    function test_volumeShares() {
+        var shares = Logic.volumeShares(100, 400, 1000)
+        fuzzyCompare(shares[0], 0.1, 1e-9)
+        fuzzyCompare(shares[1], 0.3, 1e-9)
+        fuzzyCompare(shares[2], 0.6, 1e-9)
+        // a folder counted bigger than what is used does not go over it
+        shares = Logic.volumeShares(900, 400, 1000)
+        fuzzyCompare(shares[0], 0.4, 1e-9)
+        fuzzyCompare(shares[1], 0, 1e-9)
+        fuzzyCompare(shares[0] + shares[1] + shares[2], 1, 1e-9)
+        compare(Logic.volumeShares(100, 400, 0), [0, 0, 1])
+        compare(Logic.volumeShares(0, 0, 1000), [0, 0, 1])
+    }
+
+    function test_pathMarkup() {
+        compare(Logic.pathMarkup("/home/user/Documents", "#f00", 0), '/home/user/<font color="#f00">Documents</font>')
+        compare(Logic.pathMarkup("/home/user/", "#f00", 0), '/home/<font color="#f00">user</font>')
+        compare(Logic.pathMarkup("/etc", "#f00", 0), '/<font color="#f00">etc</font>')
+        compare(Logic.pathMarkup("/", "#f00", 0), '<font color="#f00">/</font>')
+        compare(Logic.pathMarkup("/a<b/c&d", "#f00", 0), '/a&lt;b/<font color="#f00">c&amp;d</font>')
+        // first levels left out
+        compare(Logic.pathMarkup("/home/user/Documents", "#f00", 1), '\u2026/user/<font color="#f00">Documents</font>')
+        compare(Logic.pathMarkup("/home/user/Documents", "#f00", 2), '\u2026/<font color="#f00">Documents</font>')
+        compare(Logic.pathMarkup("/home/user/Documents", "#f00", 9), '\u2026/<font color="#f00">Documents</font>')
+        compare(Logic.pathMarkup("/", "#f00", 3), '<font color="#f00">/</font>')
     }
 
     function test_canvasAngle() {

@@ -10,7 +10,23 @@ Item {
     property var model
     readonly property bool scanning: model ? model.scanning : false
     readonly property bool busy: model ? model.busy : false
-    readonly property bool shown: scanning || busy
+    // a scan shorter than a blink is not announced: the row would only push the chart down
+    // and back
+    property bool lasting: false
+    readonly property bool shown: (scanning && lasting) || busy
+
+    onScanningChanged: {
+        lasting = false
+        if (scanning)
+            patience.restart()
+        else
+            patience.stop()
+    }
+    Timer {
+        id: patience
+        interval: 400
+        onTriggered: root.lasting = root.scanning
+    }
 
     height: shown ? Theme.itemSizeMedium : 0
     visible: shown

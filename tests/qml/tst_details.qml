@@ -66,12 +66,12 @@ TestCase {
             button.clicked(null)
     }
 
-    // the buttons with a given text, among everything in the panel
+    // the visible buttons of a given action, among everything in the panel
     function buttons(parent, text, found) {
         found = found || []
         for (var index = 0; index < parent.children.length; index++) {
             var child = parent.children[index]
-            if (child.text === text && child.clicked !== undefined && child.visible)
+            if (child.action === text && child.visible)
                 found.push(child)
             buttons(child, text, found)
         }
@@ -94,32 +94,30 @@ TestCase {
         verify(details.visible)
         verify(!details.marker)
         verify(details.allowed)
-        verify(button("Open") !== null)
-        verify(button("Delete").enabled)
+        verify(button("open") !== null)
+        verify(button("delete").enabled)
         // folders go through tar, except for zip
-        verify(button("zip") !== null)
-        verify(button("tar.gz") !== null)
-        verify(button("tar.7z") !== null)
-        verify(button("gz") === null)
+        compare(button("zip").caption, "zip")
+        compare(button("gz").caption, "tar.gz")
+        compare(button("7z").caption, "tar.7z")
     }
 
     function test_file() {
         show(item("file"))
-        verify(button("Open") === null)
-        verify(button("gz") !== null)
-        verify(button("7z") !== null)
-        verify(button("tar.gz") === null)
+        verify(button("open") === null)
+        compare(button("gz").caption, "gz")
+        compare(button("7z").caption, "7z")
     }
 
     function test_linksAreNotCompressed() {
         show(item("link"))
-        verify(button("Delete").enabled)
+        verify(button("delete").enabled)
         verify(button("zip") === null)
     }
 
     function test_deleteAsksThePage() {
         show(item("file"))
-        click(button("Delete"))
+        click(button("delete"))
         compare(deleteSpy.count, 1)
         compare(deleteSpy.signalArguments[0][0], "/home/user/album")
         compare(deleteSpy.signalArguments[0][1], "album")
@@ -129,7 +127,7 @@ TestCase {
 
     function test_compressNamesThePath() {
         show(item("folder"))
-        click(button("tar.7z"))
+        click(button("7z"))
         compare(fake.calls.length, 1)
         compare(fake.calls[0][0], "compress")
         compare(fake.calls[0][1], "/home/user/album")
@@ -138,18 +136,18 @@ TestCase {
 
     function test_open() {
         show(item("folder"))
-        click(button("Open"))
+        click(button("open"))
         compare(fake.calls[0][0], "enter")
     }
 
     function test_refusedItemsCannotBeRemoved() {
         show(item("folder", "The home folder cannot be removed"))
         verify(!details.allowed)
-        verify(!button("Delete").enabled)
+        verify(!button("delete").enabled)
         verify(!button("zip").enabled)
         // but can still be opened
-        verify(button("Open").enabled)
-        click(button("Delete"))
+        verify(button("open").enabled)
+        click(button("delete"))
         click(button("zip"))
         compare(deleteSpy.count, 0)
         compare(fake.calls.length, 0)
@@ -158,13 +156,13 @@ TestCase {
     function test_nothingIsRemovedWhileWorking() {
         show(item("file"))
         fake.busy = true
-        verify(!button("Delete").enabled)
+        verify(!button("delete").enabled)
         verify(!button("zip").enabled)
         fake.busy = false
         fake.scanning = true
-        verify(!button("Delete").enabled)
+        verify(!button("delete").enabled)
         fake.scanning = false
-        verify(button("Delete").enabled)
+        verify(button("delete").enabled)
     }
 
     function test_marker() {
@@ -174,8 +172,8 @@ TestCase {
         show(marker)
         verify(details.marker)
         verify(!details.allowed)
-        verify(button("Delete") === null)
+        verify(button("delete") === null)
         verify(button("zip") === null)
-        verify(button("Open") === null)
+        verify(button("open") === null)
     }
 }

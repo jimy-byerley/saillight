@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use crate::actions::delete::{refusal, Refusal};
 use crate::chart::hit::{hit, Hit};
-use crate::chart::labels::{place, Area, Placement};
+use crate::chart::labels::{first_ring, place, Area, Placement};
 use crate::chart::layout::{layout, Sector, SectorKind};
 use crate::scan::owner;
 use crate::scan::tree::{Kind, Node, NodeId, Tree, ROOT};
@@ -105,9 +105,28 @@ impl State {
         self.place_labels();
     }
 
+    /// the sectors to name: the drawn items of the selected folder, of the current folder
+    /// when nothing drawn is in the selection
+    pub fn named(&self) -> Vec<usize> {
+        let inside: Vec<usize> = match (&self.tree, self.selected_sector()) {
+            (Some(tree), Some(selected)) if !selected.is_marker() => (0..self.sectors.len())
+                .filter(|&index| {
+                    let sector = &self.sectors[index];
+                    !sector.is_marker() && tree.node(sector.node).parent == Some(selected.node)
+                })
+                .collect(),
+            _ => Vec::new(),
+        };
+        if inside.is_empty() {
+            first_ring(&self.sectors)
+        } else {
+            inside
+        }
+    }
+
     fn place_labels(&mut self) {
         self.placement = match &self.area {
-            Some(area) => place(&self.sectors, self.depth, area),
+            Some(area) => place(&self.sectors, &self.named(), self.depth, area),
             None => Placement::default(),
         };
     }
@@ -141,17 +160,18 @@ impl State {
         if tree.path != self.folder {
             return false;
         }
+        // sizes computed again: what was selected stays selected when it is still there
+        let selected = self.selected_sector().map(|sector| sector.kind).zip(self.selected_item_or_folder());
         self.tree = Some(tree);
         self.selected = None;
         self.relayout();
+        if let (Some((kind, path)), Some(tree)) = (selected, &self.tree) {
+            if let Some(id) = tree.find(&path) {
+                self.selected = self.sectors.iter().position(|sector| sector.node == id && sector.kind == kind);
+                self.place_labels();
+            }
+        }
         true
-    }
-
-    /// forget the sizes, before computing them again
-    pub fn clear_tree(&mut self) {
-        self.tree = None;
-        self.selected = None;
-        self.relayout();
     }
 
     pub fn set_depth(&mut self, depth: u32) -> bool {
@@ -206,11 +226,13 @@ impl State {
             Hit::Centre => Release::Parent,
             Hit::Sector(index) => {
                 self.selected = Some(index);
+                self.place_labels();
                 Release::Selected
             }
             Hit::Nothing if x * x + y * y > 1.0 => Release::Nothing,
             Hit::Nothing => {
                 self.selected = None;
+                self.place_labels();
                 Release::Cleared
             }
         }
@@ -219,10 +241,17 @@ impl State {
     /// select a sector by its index, as a tap on its name does
     pub fn select(&mut self, index: Option<usize>) {
         self.selected = index.filter(|&index| index < self.sectors.len());
+        self.place_labels();
     }
 
     fn selected_sector(&self) -> Option<&Sector> {
         self.sectors.get(self.selected?)
+    }
+
+    /// path of the node of the selected sector, the folder of a marker
+    fn selected_item_or_folder(&self) -> Option<PathBuf> {
+        let sector = self.selected_sector()?;
+        Some(self.tree.as_ref()?.path_of(sector.node))
     }
 
     /// node and path of the selected item. markers are not items
@@ -638,6 +667,63 @@ mod tests {
     }
 
     #[test]
+    fn the_selection_survives_new_sizes() {
+        let mut state = state();
+        tap(&mut state, 2, 0.3);
+        assert_eq!(selected_name(&state).as_deref(), Some("a"));
+        // the same folder scanned again, with something new in it
+        let mut tree = sample();
+        tree.add(ROOT, Node::new("new", Kind::File, 400));
+        tree.compute();
+        assert!(state.set_tree(tree));
+        assert_eq!(selected_name(&state).as_deref(), Some("a"));
+        // what is gone is not selected anymore
+        let mut tree = sample();
+        let a = tree.find(Path::new("/data/big/a")).unwrap();
+        tree.remove(a);
+        assert!(state.set_tree(tree));
+        assert_eq!(state.selected, None);
+    }
+
+    #[test]
+    fn names_are_those_of_the_selection() {
+        let mut state = state();
+        let area = Area { landscape: false, radius: 300.0, line: 40.0, width: 340.0, height: 0.0, rows: 5 };
+        state.set_area(area);
+        let names = |state: &State| {
+            let tree = state.tree.as_ref().unwrap();
+            let mut names: Vec<String> = state
+                .placement
+                .labels
+                .iter()
+                .map(|label| tree.node(state.sectors[label.sector].node).name.to_string_lossy().into_owned())
+                .collect();
+            names.sort();
+            names
+        };
+        assert_eq!(names(&state), ["big", "d", "small"]);
+        // a folder: what is inside it
+        tap(&mut state, 1, 0.3);
+        assert_eq!(selected_name(&state).as_deref(), Some("big"));
+        assert_eq!(names(&state), ["a", "b"]);
+        // a file has nothing inside: the current folder again
+        tap(&mut state, 2, 0.3);
+        assert_eq!(selected_name(&state).as_deref(), Some("a"));
+        assert_eq!(names(&state), ["big", "d", "small"]);
+        // by a tap on a name, then nothing
+        let big = state.sectors.iter().position(|sector| sector.ring == 1).unwrap();
+        state.select(Some(big));
+        assert_eq!(names(&state), ["a", "b"]);
+        state.select(None);
+        assert_eq!(names(&state), ["big", "d", "small"]);
+        // a folder whose content is not drawn
+        state.select(Some(big));
+        state.set_depth(1);
+        assert_eq!(selected_name(&state).as_deref(), Some("big"));
+        assert_eq!(names(&state), ["big", "d", "small"]);
+    }
+
+    #[test]
     fn labels_follow_the_area() {
         let mut state = state();
         assert!(state.placement.labels.is_empty());
@@ -647,7 +733,8 @@ mod tests {
         assert!(!state.set_area(area));
         state.set_folder(Path::new("/data/big"));
         assert_eq!(state.placement.labels.len(), 2);
-        state.clear_tree();
+        // a folder nothing is known about
+        state.set_folder(Path::new("/elsewhere"));
         assert!(state.placement.labels.is_empty());
     }
 }
