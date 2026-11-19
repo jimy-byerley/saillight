@@ -97,6 +97,7 @@ impl Tree {
     }
 
     /// number of nodes ever added, detached ones included
+    #[cfg_attr(not(test), allow(dead_code))]
     pub fn len(&self) -> usize {
         self.nodes.len()
     }
@@ -134,6 +135,7 @@ impl Tree {
     }
 
     /// whether the node is still attached to the root
+    #[cfg_attr(not(test), allow(dead_code))]
     pub fn attached(&self, id: NodeId) -> bool {
         let mut current = id;
         loop {
