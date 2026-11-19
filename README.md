@@ -45,7 +45,7 @@ sfdk -c target=SailfishOS-5.1.0.11-i486 build
 
 The package lands in `RPMS/saillight-<version>.i486.rpm`. A release build from scratch takes a few minutes.
 
-Only the `i486` target (the SDK emulator) is built and tested so far. Building for a phone means using an `aarch64` or `armv7hl` target instead; this has not been tried yet.
+For a phone, use its target instead, eg. `SailfishOS-5.1.0.11-aarch64` for a Jolla C2. The `aarch64` package builds, but only the `i486` one (the SDK emulator) has been run and tested so far.
 
 ### Install
 
@@ -94,6 +94,10 @@ scripts/        development helpers
 
 Geometry is computed in Rust and only drawn by QML. Logic is kept out of the Qt types where possible, so it can be unit tested without a screen. `docs/implementation.md` has the guideline for where new files go.
 
+### Launcher icon
+
+`python3 scripts/make-icons.py` (needs Pillow) writes `icons/saillight.svg`, the reference drawing, and the png files of each size from the same description: a ring chart in white on a grey circle, one of the base shapes of the [Sailfish app icon guide](https://sailfishos.org/design/icons/). Change the description in the script, not the files.
+
 ### Tests
 
 Unit tests run inside the SDK target, as the development machine has no Qt or Silica:
@@ -126,4 +130,4 @@ It copies the project's QML to the emulator first, so QML changes need no rebuil
 
 Working in the emulator: scan with progress, chart, names, selection, details, storage gauges, navigation, cache and change warning, deletion, compression in the three formats, cover.
 
-Not done yet: a try on a real phone (touch handling and drawing speed are only known from the emulator), builds for phone architectures, packaging for the Chum repository, a launcher icon (the current one is a placeholder), and the choice of a license (the rpm spec has a placeholder).
+Not done yet: a try on a real phone (touch handling and drawing speed are only known from the emulator), packaging for the Chum repository, and the choice of a license (the rpm spec has a placeholder).

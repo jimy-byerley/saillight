@@ -74,6 +74,7 @@ choices marked *(to confirm)* were made during the unattended implementation and
 
 - full path of the current folder, its last level in the highlight color, on three lines at most (first levels are left out until it fits), as on the cover of sailtree; then a ring for the storage it is in: the folder in the highlight color, the rest of what is used, what is free. the size of the folder and of the storage are written in the ring (`UsageRing.qml`)
 - a folder too small to show in the ring still gets a thin mark
+- behind everything, a picture filling the cover, made as the ones of the system apps (`graphic-cover-*` of the theme, eg. the settings): white shapes bigger than the cover, their transparency in the picture itself. here a ring chart with one sector standing out (`qml/icons/cover.svg`)
 - one cover action: refresh. while a scan, deletion or compression runs, it is named in the ring
 
 ## actions on the selection
@@ -156,6 +157,7 @@ saillight/
 │   ├── icons/                action icons missing from the theme, svg (created with the first one)
 │   └── cover/                CoverPage
 ├── tests/qml/                QML unit tests (QtTest), rust unit tests stay next to the code
+├── icons/saillight.svg       launcher icon, written with the png files by scripts/make-icons.py
 ├── icons/<size>/saillight.png sizes 86x86, 108x108, 128x128, 172x172
 ├── saillight.desktop
 ├── rpm/saillight.spec

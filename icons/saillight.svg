@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- launcher icon, written by scripts/make-icons.py with the png files of each size: on the
+     fully rounded base shape of the Sailfish app icon guide, greyscale -->
+<svg xmlns="http://www.w3.org/2000/svg" width="86" height="86" viewBox="0 0 86 86">
+  <defs>
+    <linearGradient id="background" gradientUnits="userSpaceOnUse" x1="8" y1="78" x2="78" y2="8">
+      <stop offset="0" stop-color="#2e2e2e"/>
+      <stop offset="1" stop-color="#8a8a8a"/>
+    </linearGradient>
+  </defs>
+  <circle fill="url(#background)" cx="43" cy="43" r="42.7"/>
+  <!-- a ring chart: two levels of folders -->
+  <path fill="#ffffff" fill-opacity="1" d="M44.08 22.03 A21 21 0 0 1 54.05 60.86 L48.26 51.50 A10 10 0 0 0 43.52 33.01 Z"/>
+  <path fill="#ffffff" fill-opacity="1" d="M52.15 61.90 A21 21 0 0 1 24.49 52.91 L34.18 47.72 A10 10 0 0 0 47.36 52.00 Z"/>
+  <path fill="#ffffff" fill-opacity="1" d="M23.56 50.95 A21 21 0 0 1 26.15 30.47 L34.98 37.03 A10 10 0 0 0 33.74 46.79 Z"/>
+  <path fill="#ffffff" fill-opacity="1" d="M27.53 28.80 A21 21 0 0 1 36.74 22.96 L40.02 33.46 A10 10 0 0 0 35.63 36.24 Z"/>
+  <path fill="#ffffff" fill-opacity="0.7" d="M43.95 9.01 A34 34 0 0 1 76.21 35.69 L65.46 38.06 A23 23 0 0 0 43.65 20.01 Z"/>
+  <path fill="#ffffff" fill-opacity="0.7" d="M76.56 37.57 A34 34 0 0 1 69.80 63.93 L61.13 57.16 A23 23 0 0 0 65.70 39.33 Z"/>
+  <path fill="#ffffff" fill-opacity="0.7" d="M58.54 73.24 A34 34 0 0 1 23.80 71.06 L30.01 61.98 A23 23 0 0 0 53.51 63.46 Z"/>
+  <path fill="#ffffff" fill-opacity="0.7" d="M11.84 56.61 A34 34 0 0 1 9.44 37.57 L20.30 39.33 A23 23 0 0 0 21.92 52.20 Z"/>
+</svg>

@@ -14,6 +14,15 @@ CoverBackground {
     // a canvas loses what it drew while it is not shown
     onStatusChanged: if (status === Cover.Active) ring.repaint()
 
+    // a graphic filling the cover behind everything, as the apps of the system have: white
+    // shapes whose transparency is in the picture. here a ring chart bigger than the cover
+    Image {
+        anchors.fill: parent
+        sourceSize.width: width
+        sourceSize.height: height
+        source: Qt.resolvedUrl("../icons/cover.svg")
+    }
+
     // full path of the folder, its last level in the accent color, as on the cover of sailtree.
     // over three lines at most: first levels are left out until it fits
     Label {
