@@ -25,3 +25,4 @@
 - 2026-11-19: the pull-down menu could not be opened by moving the page from code (the red bar shows, not the entries); its three entries are plain calls to tested model methods. the cover is created without error at start but was not looked at.
 - 2026-11-19: rust unit tests run as a normal user in the build target (uid 1001), so the permission tests (unreadable folder, unwritable destination) really run there.
 - 2026-11-19: state at the end of the night: 125 rust tests and 49 QML tests pass, the rpm built from this commit is installed in the emulator and starts on the home folder. the test folder and the app's settings and cache were removed from the emulator. left for the architect: finger touches, pull-down menu and cover on a device, painting time on a phone, the choices marked "to confirm", license, icon, repository URL, packaging.
+- 2026-11-19: the timer-driven method used for the emulator checks is kept as `scripts/emulator-drive.sh`.

@@ -154,4 +154,5 @@ saillight/
 - the build target has no screen: QML tests create components without a window, call the functions the touch areas call, and emit the `clicked` signal of buttons
 - `sfdk -c target=SailfishOS-5.1.0.11-i486 build` produces `RPMS/saillight-*.rpm`
 - `scripts/emulator-run.sh [--no-build] [file.png]` builds, installs in the SDK emulator, starts the app and saves a screenshot. it never targets a real device
+- `scripts/emulator-drive.sh <folder> "<statement>" ...` runs javascript statements one by one in the main page of the app installed in the emulator, with a screenshot after each: touches cannot be simulated there. it copies the project's QML first, so QML changes need no rebuild
 - only the i486 target (emulator) is built for now
