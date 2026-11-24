@@ -69,6 +69,12 @@ Page {
         onActiveChanged: if (Qt.application.active) chartModel.checkStale()
     }
 
+    // hands a file or folder to the application the system has for it
+    function openExternally(path) {
+        if (!Qt.openUrlExternally(Logic.fileUrl(path)))
+            Notices.show("No application to open " + path, Notice.Long, Notice.Bottom)
+    }
+
     RemorsePopup {
         id: remorse
     }
@@ -89,6 +95,10 @@ Page {
                 visible: chartModel.depth < chartModel.maxDepth
                 text: "More levels (" + (chartModel.depth + 1) + ")"
                 onClicked: chartModel.setDepth(chartModel.depth + 1)
+            }
+            MenuItem {
+                text: "Open in file manager"
+                onClicked: page.openExternally(chartModel.folder)
             }
             MenuItem {
                 text: "Refresh"
@@ -202,6 +212,7 @@ Page {
             y: page.isLandscape ? progress.y + progress.height + Theme.paddingMedium
                                 : block.y + block.height
             width: page.width - x
+            onOpenRequested: page.openExternally(path)
             onDeleteRequested: remorse.execute("Deleting " + name, function() {
                 chartModel.deleteItem(path)
             })

@@ -2,7 +2,8 @@ import QtQuick 2.6
 import Sailfish.Silica 1.0
 import "../js/logic.js" as Logic
 
-// the selected sector: path, properties, set as current folder, delete, compress
+// the selected sector: path, properties, open (set as current folder, or in its application for a file),
+// delete, compress
 Column {
     id: root
 
@@ -16,6 +17,8 @@ Column {
 
     // the user asked to delete the item at this path: the page asks for confirmation
     signal deleteRequested(string path, string name)
+    // the user asked to open the file at this path: the page hands it to the system
+    signal openRequested(string path)
 
     visible: shown
     spacing: Theme.paddingSmall
@@ -135,10 +138,17 @@ Column {
         ActionIcon {
             action: "open"
             icon: "enter"
-            visible: root.details.enterable === true
+            // a folder becomes the current folder, a file goes to the application of the system for it
+            readonly property bool enters: root.details.enterable === true
+            visible: enters || root.details.kind === "file"
             width: root.innerWidth / 5
-            enabled: root.model ? !root.model.busy : false
-            onClicked: root.model.enterSelected()
+            enabled: !enters || (root.model ? !root.model.busy : false)
+            onClicked: {
+                if (enters)
+                    root.model.enterSelected()
+                else
+                    root.openRequested(root.details.path)
+            }
         }
         ActionIcon {
             action: "delete"

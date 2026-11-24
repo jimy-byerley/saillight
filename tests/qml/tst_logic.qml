@@ -145,6 +145,12 @@ TestCase {
         fuzzyCompare(Logic.canvasAngle(1), 3 * Math.PI / 2, 1e-9)
     }
 
+    function test_fileUrl() {
+        compare(Logic.fileUrl("/home/user/notes.txt"), "file:///home/user/notes.txt")
+        compare(Logic.fileUrl("/home/user/my file #1?.txt"), "file:///home/user/my%20file%20%231%3F.txt")
+        compare(Logic.fileUrl("/"), "file:///")
+    }
+
     function test_archiveExtension() {
         compare(Logic.archiveExtension("zip", true), "zip")
         compare(Logic.archiveExtension("zip", false), "zip")

@@ -4,6 +4,11 @@ A storage size visualizer for Sailfish OS, in the spirit of Filelight, written i
 
 The sizes of the current folder are shown as a ring chart: each ring is a level of folders, each sector an item, proportional to the space it uses on disk.
 
+<p>
+  <img src="docs/screenshots/chart.png" width="270" alt="the chart of /usr with the names of its items, and the storage gauge below">
+  <img src="docs/screenshots/selection.png" width="270" alt="a folder selected in the chart: names of its content, its details and the actions on it">
+</p>
+
 - browse by the chart: tap a sector to select it, slide to change the target, tap the centre to go to the parent folder, tap a level of the path to jump to it
 - names of the items around the chart, with arrows to their sectors; they follow the selected folder
 - details of the selection (path, size, date, permissions, owner), and how full each storage is when nothing is selected

@@ -87,6 +87,11 @@ function canvasAngle(turn) {
     return turn * 2 * Math.PI - Math.PI / 2
 }
 
+// address of a local file or folder, for the applications of the system
+function fileUrl(path) {
+    return "file://" + path.split("/").map(encodeURIComponent).join("/")
+}
+
 // what compressing adds to a name: folders go through tar, except for zip
 function archiveExtension(format, folder) {
     if (format === "zip")

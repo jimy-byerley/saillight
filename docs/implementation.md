@@ -54,7 +54,7 @@ choices marked *(to confirm)* were made during the unattended implementation and
 
 - a press on the chart highlights the sector under the finger, sliding moves the highlight, releasing selects. releasing out of the chart changes nothing, releasing on a gap clears the selection, and so does a tap around the chart
 - the chart keeps the touches that start on its disc, so the page cannot be scrolled or its menu pulled from there; the corners around the disc, the names, the path and the details can *(to confirm)*
-- pull-down menu: refresh, more levels, fewer levels (1 to 6)
+- pull-down menu: refresh, open in file manager, more levels, fewer levels (1 to 6)
 - a tap on a name selects its sector
 
 ## names around the chart
@@ -79,7 +79,9 @@ choices marked *(to confirm)* were made during the unattended implementation and
 
 ## actions on the selection
 
-- one line of theme icons under the details (`ActionIcon.qml`): open (folders, the `enter` icon of sailtree, copied in `qml/icons`), delete, and one archive icon per format with the extension it gives written below, as the icon is the same for the three
+- one line of theme icons under the details (`ActionIcon.qml`): open (folders and files, the `enter` icon of sailtree, copied in `qml/icons`), delete, and one archive icon per format with the extension it gives written below, as the icon is the same for the three
+- open makes a folder the current folder, and hands a file to the application the system associates to it (`Qt.openUrlExternally`), in place. links have no open
+- "open in file manager" of the pull-down menu hands the current folder to the system the same way: it needs an installed application declaring `inode/directory`, as sailtree does. the request goes to the home screen, which starts the application, offers a choice when there are several, and shows its own notice when there is none (`Qt.openUrlExternally` answers true even then, so the notice of the app is only there for a refusal of Qt itself)
 
 ## deletion
 
@@ -162,6 +164,7 @@ saillight/
 ├── saillight.desktop
 ├── rpm/saillight.spec
 └── docs/
+    └── screenshots/          pictures of the readme, taken in the emulator
 ```
 
 - build files, shim, scripts and rpm spec come from `../sailtree`, with the workarounds recorded in its journal

@@ -30,6 +30,11 @@ TestCase {
         signalName: "deleteRequested"
     }
 
+    SignalSpy {
+        id: openSpy
+        signalName: "openRequested"
+    }
+
     function item(kind, refusal) {
         return {
             kind: kind, name: "album", path: "/home/user/album", size: 1500000, date: 0,
@@ -52,10 +57,13 @@ TestCase {
         details = component.createObject(null, { model: fake })
         deleteSpy.target = details
         deleteSpy.clear()
+        openSpy.target = details
+        openSpy.clear()
     }
 
     function cleanup() {
         deleteSpy.target = null
+        openSpy.target = null
         details.destroy()
     }
 
@@ -104,7 +112,7 @@ TestCase {
 
     function test_file() {
         show(item("file"))
-        verify(button("open") === null)
+        verify(button("open") !== null)
         compare(button("gz").caption, "gz")
         compare(button("7z").caption, "7z")
     }
@@ -113,6 +121,7 @@ TestCase {
         show(item("link"))
         verify(button("delete").enabled)
         verify(button("zip") === null)
+        verify(button("open") === null)
     }
 
     function test_deleteAsksThePage() {
@@ -138,6 +147,18 @@ TestCase {
         show(item("folder"))
         click(button("open"))
         compare(fake.calls[0][0], "enter")
+        compare(openSpy.count, 0)
+    }
+
+    function test_openFileAsksThePage() {
+        show(item("file"))
+        // a file can be opened even while the app works
+        fake.busy = true
+        verify(button("open").enabled)
+        click(button("open"))
+        compare(openSpy.count, 1)
+        compare(openSpy.signalArguments[0][0], "/home/user/album")
+        compare(fake.calls.length, 0)
     }
 
     function test_refusedItemsCannotBeRemoved() {
